@@ -14,9 +14,16 @@ static std::map<SafeLog::MessageType, std::string> labelNameMap =
 };
 
 SafeLog::InnerSafeLog::InnerSafeLog(const std::string & filePath) :
-	logFile_(filePath),
 	isRunning_(false)
 {
+	reset(filePath);
+}
+
+void SafeLog::InnerSafeLog::reset(const std::string & filePath)
+{
+	if (logFile_.is_open())
+		logFile_.close();
+	logFile_.open(filePath);
 	if (logFile_.is_open())
 	{
 		isRunning_ = true;
@@ -56,6 +63,11 @@ SafeLog::SafeLog(const std::string & filePath)
 SafeLog::~SafeLog()
 {
 	innerLog_->stop();
+}
+
+void SafeLog::reset(const std::string & filePath)
+{
+	innerLog_->reset(filePath);
 }
 
 SafeLog & SafeLog::operator<<(const std::string & message)

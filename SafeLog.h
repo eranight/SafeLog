@@ -35,6 +35,8 @@ namespace safelog {
 		SafeLog & operator<<(const std::string & message);
 		SafeLog & operator()(const MessageType & messageType);
 
+		void reset(const std::string & filePath);
+
 	private:
 
 		class InnerSafeLog
@@ -42,6 +44,7 @@ namespace safelog {
 		public:
 			InnerSafeLog(const std::string & filePath);
 
+			void reset(const std::string & filePath);
 			void pushMessage(const std::string & message);
 			void stop() { isRunning_ = false; hasMessage_.notify_one(); }
 
