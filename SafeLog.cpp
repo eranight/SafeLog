@@ -2,8 +2,16 @@
 
 #include <thread>
 #include <string>
+#include <map>
 
-using namespace std::chrono;
+using namespace safelog;
+
+static std::map<SafeLog::MessageType, std::string> labelNameMap =
+{
+	{ SafeLog::MessageType::ERROR, "[Error]: "},
+	{ SafeLog::MessageType::WARNING, "[Warning]: " },
+	{ SafeLog::MessageType::DEBUG, "[Debug]: " },
+};
 
 SafeLog::InnerSafeLog::InnerSafeLog(const std::string & filePath) :
 	logFile_(filePath),
@@ -19,22 +27,22 @@ SafeLog::InnerSafeLog::InnerSafeLog(const std::string & filePath) :
 
 void SafeLog::InnerSafeLog::pushMessage(const std::string & message)
 {
-	mutex_.lock();
+	std::unique_lock<std::mutex> lock(mutex_);
 	messageQueue_.push(message);
-	mutex_.unlock();
+	hasMessage_.notify_one();
 }
 
 void SafeLog::InnerSafeLog::mainLoop()
 {
 	while (isRunning_)
 	{
-		if (messageQueue_.size() > 0)
-		{
-			mutex_.lock();
-			logFile_ << messageQueue_.front();
-			messageQueue_.pop();
-			mutex_.unlock();
+		std::unique_lock<std::mutex> lock(mutex_);
+		while (messageQueue_.empty()) {
+			hasMessage_.wait(lock);
+			if (!isRunning_) break;
 		}
+		logFile_ << messageQueue_.front();
+		messageQueue_.pop();
 	}
 	logFile_.close();
 	delete this;
@@ -43,9 +51,6 @@ void SafeLog::InnerSafeLog::mainLoop()
 SafeLog::SafeLog(const std::string & filePath)
 {
 	innerLog_ = new InnerSafeLog(filePath);
-	labelNameMap[MessageType::ERROR] = "[Error]: ";
-	labelNameMap[MessageType::WARNING] = "[Warning]: ";
-	labelNameMap[MessageType::DEBUG] = "[Debug]: ";
 }
 
 SafeLog::~SafeLog()
