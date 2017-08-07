@@ -43,9 +43,9 @@ void SafeLog::InnerSafeLog::mainLoop()
 SafeLog::SafeLog(const std::string & filePath)
 {
 	innerLog_ = new InnerSafeLog(filePath);
-	labelNameMap[MessageType::ERROR] = "[" + std::string(__PRETTY_FUNCTION__) + " Error]: ";
-	labelNameMap[MessageType::WARNING] = "[" + std::string(__PRETTY_FUNCTION__) + " Warning]: ";
-	labelNameMap[MessageType::DEBUG] = "[" + std::string(__PRETTY_FUNCTION__) + " Debug]: ";
+	labelNameMap[MessageType::ERROR] = "[Error]: ";
+	labelNameMap[MessageType::WARNING] = "[Warning]: ";
+	labelNameMap[MessageType::DEBUG] = "[Debug]: ";
 }
 
 SafeLog::~SafeLog()
