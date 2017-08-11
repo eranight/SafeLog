@@ -1,64 +1,106 @@
+/**********************************
+Creation:
+  SafeLog logger() - creation without running
+  SafeLog logger("/logs/connection.log") - creation with running
+
+Reset:
+  logger.reset("/logs/otherlog.log") - use this method when you need to change a logfile or to running logger if you have used default constructor
+
+Write an error message:
+  logger(SL_ERROR) << "some error"
+
+Write a warning message:
+  logger(SL_WARNING) << "some warning message"
+
+Write a debug message:
+  logger(SL_DEBUG) << "some debug message"
+
+***********************************/
+
 #pragma once
+
+#ifndef SL_ERROR
+#define SL_ERROR safelog::SafeLog::MessageType::ERROR
+#endif //SL_ERROR
+
+#ifndef SL_WARNING
+#define SL_WARNING safelog::SafeLog::MessageType::WARNING
+#endif //SL_WARNING
+
+#ifndef SL_DEBUG
+#define SL_DEBUG safelog::SafeLog::MessageType::DEBUG
+#endif //SL_DEBUG
 
 #include <fstream>
 #include <queue>
 #include <mutex>
+#include <condition_variable>
 
 namespace safelog {
 
-#ifndef SL_ERROR
-#define SL_ERROR SafeLog::MessageType::ERROR
-#endif //SL_ERROR
+  class ILoginWritter {
+  public:
+    virtual ILoginWritter & operator<<(const std::string & message) = 0;
+  };
 
-#ifndef SL_WARNING
-#define SL_WARNING SafeLog::MessageType::WARNING
-#endif //SL_WARNING
+  class SafeLog
+  {
+  public:
 
-#ifndef SL_DEBUG
-#define SL_DEBUG SafeLog::MessageType::DEBUG
-#endif //SL_DEBUG
+    enum class MessageType
+    {
+      ERROR,
+      WARNING,
+      DEBUG
+    };
 
-	class SafeLog
-	{
-	public:
+    SafeLog();
+    SafeLog(const std::string & filePath);
+    ~SafeLog();
 
-		enum class MessageType
-		{
-			ERROR,
-			WARNING,
-			DEBUG
-		};
+    //SafeLog & operator<<(const std::string & message);
+  ILoginWritter & operator()(const MessageType & messageType);
 
-		SafeLog(const std::string & filePath);
-		~SafeLog();
+    void reset(const std::string & filePath);
 
-		SafeLog & operator<<(const std::string & message);
-		SafeLog & operator()(const MessageType & messageType);
+  private:
 
-		void reset(const std::string & filePath);
+    class InnerSafeLog
+    {
+    public:
+      InnerSafeLog();
+      InnerSafeLog(const std::string & filePath);
 
-	private:
+      void reset(const std::string & filePath);
+      void pushMessage(const std::string & message);
+      void stop() { isRunning_ = false; hasMessage_.notify_one(); }
 
-		class InnerSafeLog
-		{
-		public:
-			InnerSafeLog(const std::string & filePath);
+    private:
+      bool isRunning_;
 
-			void reset(const std::string & filePath);
-			void pushMessage(const std::string & message);
-			void stop() { isRunning_ = false; hasMessage_.notify_one(); }
+      std::ofstream logFile_;
+      std::queue<std::string> messageQueue_;
+      std::mutex mutex_;
+      std::condition_variable hasMessage_;
 
-		private:
-			bool isRunning_;
+      void mainLoop();
+      void safePop();
+    }  *innerLog_;
 
-			std::ofstream logFile_;
-			std::queue<std::string> messageQueue_;
-			std::mutex mutex_;
-			std::condition_variable hasMessage_;
+  class InnerLoginWritter : public ILoginWritter {
+  public:
+    InnerLoginWritter(SafeLog & sl) : sl_(sl) {}
+    ILoginWritter & operator<<(const std::string & message) override;
+    void SetLabel(const std::string & label) { label_ = label; }
 
-			void mainLoop();
-		}  *innerLog_;
+  private:
+    SafeLog & sl_;
+    std::string label_;
 
-	};
+    friend SafeLog;
+  } logginWritter_;
+
+    std::string getTimeAsString();
+  };
 
 }
